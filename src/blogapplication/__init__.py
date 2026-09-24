@@ -6,7 +6,7 @@ from flask_jwt_extended import JWTManager, create_access_token,get_jwt_identity 
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
-mongo_url = "SAMPLEURL"
+mongo_url = "mongodb+srv://testuser:e2t2THGDnCZRwIdr@cluster0.fdwibcx.mongodb.net/?appName=Cluster0"
 
 mongo_client = MongoClient(mongo_url)
 
