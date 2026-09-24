@@ -4,7 +4,6 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from uuid import uuid4
 from flask_jwt_extended import JWTManager, create_access_token,get_jwt_identity , jwt_required,verify_jwt_in_request
 from datetime import datetime
-from zoneinfo import ZoneInfo
 
 mongo_url = "mongodb+srv://testuser:e2t2THGDnCZRwIdr@cluster0.fdwibcx.mongodb.net/?appName=Cluster0"
 
@@ -21,10 +20,8 @@ app.config["JWT_SECRET_KEY"] = "weggurhfurhiguirkljsjgkgksls"
 
 jwt = JWTManager(app)
 
-
 def generate_id(prefix):
     return prefix + "-" + str(uuid4())
-
 
 @app.route("/api/auth/register", methods=["POST"])
 def handle_register():
@@ -55,7 +52,6 @@ def handle_register():
     })
 
     return "User added", 201
-
 
 @app.route("/api/auth/login", methods=["POST"])
 def handle_login():
@@ -98,7 +94,7 @@ def create_blog():
 
     blog_id = generate_id("BLOG")
 
-    now = datetime.now(ZoneInfo("Asia/Kolkata"))
+    now = datetime.now()
     blogs.insert_one({
         "blog_id": blog_id,
         "title": title,
@@ -136,7 +132,7 @@ def edit_blog(blog_id):
     if blog['author_id'] != user_id:
         return "Access denied to blog",403
 
-    now = datetime.now(ZoneInfo("Asia/Kolkata"))
+    now = datetime.now()
 
     blogs.update_one(
         {"blog_id":blog_id},
@@ -147,14 +143,12 @@ def edit_blog(blog_id):
         }}
     )
 
-
     return "Blog updated", 200
-
 
 @app.route("/api/blogs/<blog_id>/publish",methods=["PATCH"])
 @jwt_required()
 def publish_blog(blog_id):
-    now = datetime.now(ZoneInfo("Asia/Kolkata"))
+    now = datetime.now()
 
     blog = blogs.find_one({"blog_id":blog_id})
 
@@ -176,7 +170,6 @@ def publish_blog(blog_id):
 
     return "Blog published",200
 
-
 @app.route("/api/blogs/<blog_id>",methods=["GET"])
 def get_blog(blog_id):
 
@@ -185,7 +178,7 @@ def get_blog(blog_id):
     if not blog:
         return "Blog doesn't exist", 404
 
-    if blog["status"] == "draft":
+    if blog["status"]  == "draft":
         verify_jwt_in_request(optional=True)
 
         user_id = get_jwt_identity()
@@ -202,7 +195,47 @@ def get_blogs():
 
     published_blogs = list(blogs.find({"status":"published"}))
 
+    for blog in published_blogs:
+        blog["_id"] = str(blog["_id"])
+
     if not published_blogs:
         return "No blogs found",404
 
-    return list(published_blogs),200
+    return published_blogs,200
+
+@app.route("/api/blogs/<blog_id>",methods=["DELETE"])
+@jwt_required()
+def delete_blog(blog_id):
+
+    blog = blogs.find_one({"blog_id":blog_id})
+
+    if not blog:
+        return "Blog doesn't exist",404
+
+    user_id = get_jwt_identity()
+
+    if user_id != blog['author_id']:
+        return "You don't have permission to delete", 403
+
+    blogs.delete_one({"blog_id":blog_id})
+
+    return "Blog deleted",200
+
+@app.route("/api/me/blogs",methods=["GET"])
+@jwt_required()
+def get_curruserblogs():
+
+    user_id = get_jwt_identity()
+
+    currbloglist = list(blogs.find({"author_id":user_id}))
+
+    for blogitem in currbloglist:
+        blogitem["_id"] = str(blogitem["_id"])
+
+    if not currbloglist:
+        return "No blogs for this user", 404
+
+    return currbloglist
+
+if __name__  == "__main__":
+    app.run(debug=True)
