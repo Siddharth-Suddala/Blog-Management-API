@@ -1,9 +1,10 @@
-from flask import Flask, request
+from flask import Flask, request,render_template , make_response
 from pymongo import MongoClient
 from werkzeug.security import generate_password_hash, check_password_hash
 from uuid import uuid4
 from flask_jwt_extended import JWTManager, create_access_token,get_jwt_identity , jwt_required,verify_jwt_in_request
 from datetime import datetime
+
 
 mongo_url = "mongodb+srv://testuser:e2t2THGDnCZRwIdr@cluster0.fdwibcx.mongodb.net/?appName=Cluster0"
 
@@ -13,6 +14,8 @@ db = mongo_client["blogappdb"]
 
 users = db["users"]
 blogs = db["blogs"]
+comments = db["comments"]
+likes = db["likes"]
 
 app = Flask(__name__)
 
@@ -237,5 +240,78 @@ def get_curruserblogs():
 
     return currbloglist
 
+@app.route("/api/blogs/<blog_id>/like", methods=["POST"])
+@jwt_required()
+def add_like(blog_id):
+    user_id = get_jwt_identity()
+
+    blog = blogs.find_one({"blog_id": id})
+
+    if not blog:
+        return {"Message": "Blog doesnt exist"}, 404
+
+    existing_like = likes.find_one({
+        "blog_id": id,
+        "user_id": user_id
+    })
+
+    if existing_like:
+        return {"Message": "Blog already liked"}, 400
+
+    likes.insert_one({
+        "blog_id": blog_id,
+        "user_id": user_id
+    })
+
+    return {"Message": "Blog liked successfully"}, 201
+
+
+@app.route("/api/blogs/<blog_id>/like", methods=["DELETE"])
+@jwt_required()
+def remove_like(blog_id):
+    user_id = get_jwt_identity()
+
+    result = likes.delete_one({
+        "blog_id": blog_id,
+        "user_id": user_id
+    })
+
+    if result.deleted_count == 0:
+        return {"Message": "Like doesnt exist"}, 404
+
+    return {"Message": "Like removed successfully"}
+
+
+@app.route("/<blog_id>/comments",methods=["GET"])
+@jwt_required()
+def get_comments(blog_id):
+    l = list(comments.find({"post_id":blog_id},{"_id":0}))
+
+    if not l:
+        return {"message":"List not found"}
+
+    return l
+
+        
+
+@app.route("/<blog_id>/comments",methods=["POST"])
+@jwt_required()
+def post_comment(blog_id):
+    body = request.json
+
+    if not body["comment"]:
+        return {"message":"No comment present"}
+
+    body["post_id"] = blog_id
+
+
+    comments.insert_one(body)
+
+    return {"message":"Comment added"}
+
+
 if __name__  == "__main__":
     app.run(debug=True)
+
+
+
