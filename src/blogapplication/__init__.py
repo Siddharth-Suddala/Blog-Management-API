@@ -279,7 +279,7 @@ def remove_like(blog_id):
     if result.deleted_count == 0:
         return {"Message": "Like doesnt exist"}, 404
 
-    return {"Message": "Like removed successfully"}
+    return {"Message": "Like removed successfully"},200
 
 
 @app.route("/<blog_id>/comments",methods=["GET"])
@@ -288,7 +288,7 @@ def get_comments(blog_id):
     l = list(comments.find({"post_id":blog_id},{"_id":0}))
 
     if not l:
-        return {"message":"List not found"}
+        return {"message":"List not found"} , 404
 
     return l
 
@@ -300,14 +300,14 @@ def post_comment(blog_id):
     body = request.json
 
     if not body["comment"]:
-        return {"message":"No comment present"}
+        return {"message":"No comment present"} , 404
 
     body["post_id"] = blog_id
 
 
     comments.insert_one(body)
 
-    return {"message":"Comment added"}
+    return {"message":"Comment added"},201
 
 
 if __name__  == "__main__":
